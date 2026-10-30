@@ -13,6 +13,7 @@ test('accepts only X/Twitter public post URLs and ids',()=>{
 test('video proxy strict host and type validation',()=>{
  assert.equal(isVideoUrl('https://video.twimg.com/ext_tw_video/123/pu/vid/1280x720/a.mp4?tag=12'),true);
  assert.equal(isVideoUrl('https://video.twimg.com.evil.com/a.mp4'),false);
+ assert.equal(isVideoUrl('https://video-s.twimg.com/a.mp4'),true);
  assert.equal(isVideoUrl('http://video.twimg.com/a.mp4'),false);
  assert.equal(isVideoUrl('https://video.twimg.com/a.m3u8'),false);
 });

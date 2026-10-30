@@ -6,6 +6,8 @@ const el={url:$('#url'),paste:$('#paste'),analyze:$('#analyze'),result:$('#resul
 let state={id:null,media:[],mediaIndex:0,chosen:0,crf:28,busy:false};
 let ffmpeg,ffLoad,toastTimer;
 let prepared=null;
+let checkingSize=0;
+const MEMORY_LIMIT=70*1048576;
 function clearPrepared(){prepared=null;el.go.textContent='ダウンロード';el.prog.hidden=true;}
 const fmt=n=>!n?'':n>1048576?(n/1048576).toFixed(1)+' MB':Math.round(n/1024)+' KB';
 const secs=ms=>{const s=Math.round((ms||0)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
@@ -13,9 +15,48 @@ const labels=['最高画質','高画質','標準','軽量'];
 function toast(t,ms=3500){el.toast.textContent=t;el.toast.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.toast.classList.remove('on'),ms)}
 function stage(t,p){el.stage.textContent=t;el.fill.style.width=Math.round(Math.max(0,Math.min(1,p))*100)+'%';el.progress.setAttribute('aria-valuenow',String(Math.round(Math.max(0,Math.min(1,p))*100)))}
 function selected(){return state.media[state.mediaIndex]?.variants[state.chosen]}
+function estimate(v){return v?.actualBytes||v?.size||((v?.bitrate||0)/8)*((state.media[state.mediaIndex]?.durationMs||0)/1000)}
+function filename(v){return 'xtract-'+state.id+'-'+(state.mediaIndex+1)+'-'+(v?.height||state.chosen+1)+'p.mp4'}
+function directDownload(){
+  const v=selected();
+  if(!v||state.busy)return;
+  const name=filename(v);
+  const path='/api/media?download=1&name='+encodeURIComponent(name)+'&url='+encodeURIComponent(v.url);
+  // A normal browser download streams bytes to Files / Downloads without building a Blob in JS.
+  // Keep the click directly in the user's gesture so iOS Safari doesn't block the action.
+  const link=document.createElement('a');
+  link.href=path;link.download=name;link.rel='noopener';
+  document.body.appendChild(link);link.click();link.remove();
+  el.prog.hidden=false;
+  stage('ダウンロードを開始しました。Safariのダウンロード一覧を確認してください',1);
+  toast('大容量モードで保存を開始しました。「ファイル」アプリのダウンロードを確認してください',6000);
+}
+function refreshMode(){
+  if(prepared)return;
+  const v=selected();if(!v)return;
+  const bytes=estimate(v);
+  if(bytes>MEMORY_LIMIT){
+    el.go.textContent='大容量モードで保存';
+    el.sizeEst.textContent=(state.media[state.mediaIndex]?.durationMs?secs(state.media[state.mediaIndex].durationMs)+' · ':'')+'約'+fmt(bytes);
+  }else{
+    el.go.textContent='ダウンロード';
+  }
+}
+async function probeSize(v,mediaIndex){
+  const serial=++checkingSize;
+  try{
+    const r=await fetch('/api/media?probe=1&url='+encodeURIComponent(v.url),{cache:'no-store'});
+    if(!r.ok)return;
+    const result=await r.json();
+    if(Number.isFinite(result.bytes)&&result.bytes>0){
+      v.actualBytes=result.bytes;
+      if(state.mediaIndex===mediaIndex&&selected()===v&&checkingSize===serial)refreshMode();
+    }
+  }catch{}
+}
 function updateRatio(){el.ratio.textContent=el.compress.checked?'動画により変動':'オフ'}
 function chooseVideo(i){
-  clearPrepared();state.mediaIndex=i;state.chosen=0;
+  clearPrepared();checkingSize++;state.mediaIndex=i;state.chosen=0;
   const m=state.media[i];
   el.thumb.src=m.thumbnail||'/icon.svg';el.sizeEst.textContent=m.durationMs?secs(m.durationMs):'';
   el.qualities.replaceChildren();
@@ -24,10 +65,12 @@ function chooseVideo(i){
     const d=document.createElement('b');const est=v.size||((v.bitrate||0)/8)*(m.durationMs||0)/1000;
     b.textContent=labels[k]||'画質 '+(k+1);d.textContent=(v.height?v.height+'p · ':'')+(est?'約'+fmt(est):(v.bitrate?Math.round(v.bitrate/1000)+' kbps':'MP4'));
     b.appendChild(d);
-    b.addEventListener('click',()=>{clearPrepared();state.chosen=k;[...el.qualities.children].forEach((x,n)=>x.setAttribute('aria-pressed',String(n===k)))});
+    b.addEventListener('click',()=>{clearPrepared();state.chosen=k;[...el.qualities.children].forEach((x,n)=>x.setAttribute('aria-pressed',String(n===k)));refreshMode();probeSize(v,i)});
     el.qualities.appendChild(b);
   });
   [...el.videoChoices.children].forEach((x,n)=>x.setAttribute('aria-pressed',String(n===i)));
+  refreshMode();
+  probeSize(m.variants[0],i);
 }
 async function analyze(){
   if(state.busy)return;
@@ -55,14 +98,14 @@ async function fetchBlob(url,callback){
       const r=await fetch(target,{cache:'no-store',credentials:'omit'});
       if(!r.ok){const body=await r.json().catch(()=>({}));throw new Error(body.error||'HTTP '+r.status)}
       const len=Number(r.headers.get('content-length'))||0;
-      if(len>120*1048576)throw new Error('動画が120MBを超えています');
+      if(len>MEMORY_LIMIT){const error=new Error('このサイズは「大容量・直接保存」を利用してください');error.code='LARGE_VIDEO';throw error;}
       if(!r.body){const b=await r.blob();callback(1);return b}
       const reader=r.body.getReader();const chunks=[];let got=0;
-      for(;;){const {done,value}=await reader.read();if(done)break;got+=value.byteLength;if(got>120*1048576){await reader.cancel();throw new Error('動画が120MBを超えています')}chunks.push(value);callback(len?Math.min(got/len,.99):Math.min(.9,got/30000000))}
+      for(;;){const {done,value}=await reader.read();if(done)break;got+=value.byteLength;if(got>MEMORY_LIMIT){await reader.cancel();const error=new Error('端末メモリ節約のため「大容量・直接保存」を利用してください');error.code='LARGE_VIDEO';throw error;}chunks.push(value);callback(len?Math.min(got/len,.99):Math.min(.9,got/30000000))}
       const b=new Blob(chunks,{type:'video/mp4'});
       if(b.size<1024)throw new Error('動画データが空です');
       callback(1);return b;
-    }catch(e){last=e}
+    }catch(e){if(e.code==='LARGE_VIDEO')throw e;last=e}
   }
   throw last||new Error('動画を取得できませんでした');
 }
@@ -104,8 +147,12 @@ async function run(){
     return;
   }
   const v=selected();if(!v||state.busy)return;
+  if(estimate(v)>MEMORY_LIMIT){
+    if(el.compress.checked)toast('大容量のため端末内圧縮を省略して元動画を直接保存します',4500);
+    return directDownload();
+  }
   state.busy=true;el.go.disabled=true;el.analyze.disabled=true;el.reset.disabled=true;el.prog.hidden=false;
-  const name='xtract-'+state.id+'-'+(state.mediaIndex+1)+'-'+(v.height||state.chosen+1)+'p.mp4';
+  const name=filename(v);
   try{
     stage('動画を取得中',.02);
     const input=await fetchBlob(v.url,p=>stage('動画を取得中',p*.5));
@@ -121,13 +168,14 @@ async function run(){
     stage('準備完了 — '+fmt(input.size)+' → '+fmt(output.size),1);
     el.go.textContent='保存する（タップ）';
     toast('「保存する」をタップしてiPhoneの共有シートを開いてください',5000);
-  }catch(e){console.error(e);stage(e.message||'保存に失敗しました',0);toast(e.message||'保存に失敗しました',5000)}
+  }catch(e){console.error(e);stage(e.code==='LARGE_VIDEO'?'「大容量・直接保存」をタップしてください':(e.message||'保存に失敗しました'),0);toast(e.message||'保存に失敗しました',5000)}
   finally{state.busy=false;el.go.disabled=false;el.analyze.disabled=false;el.reset.disabled=false}
 }
 el.paste.onclick=async()=>{try{const text=await navigator.clipboard.readText();if(!text.trim())return toast('クリップボードが空です');el.url.value=text.trim();analyze()}catch{el.url.focus();toast('長押しで貼り付けてください')}};
 el.analyze.onclick=analyze;el.go.onclick=run;
+const directButton=document.querySelector('#directSave');if(directButton)directButton.onclick=directDownload;
 el.url.addEventListener('keydown',e=>{if(e.key==='Enter')analyze()});
-el.compress.onchange=()=>{clearPrepared();el.levels.hidden=!el.compress.checked;updateRatio()};
-el.seg.onclick=e=>{const b=e.target.closest('button');if(!b)return;clearPrepared();state.crf=Number(b.dataset.crf);[...el.seg.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));updateRatio()};
-el.reset.onclick=()=>{if(state.busy)return;clearPrepared();el.result.hidden=true;el.prog.hidden=true;el.url.value='';el.compress.checked=false;el.levels.hidden=true;state={id:null,media:[],mediaIndex:0,chosen:0,crf:28,busy:false};[...el.seg.children].forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.crf==='28')));el.url.focus()};
+el.compress.onchange=()=>{clearPrepared();el.levels.hidden=!el.compress.checked;updateRatio();refreshMode()};
+el.seg.onclick=e=>{const b=e.target.closest('button');if(!b)return;clearPrepared();state.crf=Number(b.dataset.crf);refreshMode();[...el.seg.children].forEach(x=>x.setAttribute('aria-pressed',String(x===b)));updateRatio()};
+el.reset.onclick=()=>{if(state.busy)return;checkingSize++;clearPrepared();el.result.hidden=true;el.prog.hidden=true;el.url.value='';el.compress.checked=false;el.levels.hidden=true;state={id:null,media:[],mediaIndex:0,chosen:0,crf:28,busy:false};[...el.seg.children].forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.crf==='28')));el.url.focus()};
 if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));

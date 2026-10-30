@@ -1,0 +1,33 @@
+{
+  "id": "/shrink.html",
+  "name": "Shrink — 動画を軽くする",
+  "short_name": "Shrink",
+  "description": "端末内だけで複数動画を一括軽量化",
+  "start_url": "/shrink.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07080b",
+  "theme_color": "#07080b",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "/shrink-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/shrink-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/shrink-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

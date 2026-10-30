@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#07080b">
+<meta name="description" content="Xの公開ポストから動画を保存。画質選択・端末内での軽量化に対応。">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Xtract">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<title>Xtract — X動画セーバー</title>
+</head>
+<body>
+<div class="aurora"></div>
+<main>
+  <a class="backlink" href="/" style="display:inline-flex;align-items:center;gap:6px;color:#a8b0c1;text-decoration:none;font-size:12px;margin:0 0 14px">‹ ツール一覧</a>
+  <header>
+    <img class="mark" src="/icon.svg" width="64" height="64" alt="Xtract">
+    <h1>X<span>tract</span></h1>
+    <p class="sub">Xの動画を、軽く。きれいに。</p>
+  </header>
+  <section class="card" aria-label="動画URLを入力">
+    <label class="lbl" for="url">ポストのURL</label>
+    <div class="field">
+      <input id="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://x.com/user/status/…" aria-describedby="urlHelp">
+      <button class="ghost" id="paste" type="button">貼付</button>
+    </div>
+    <button class="btn primary" id="analyze" type="button">動画を解析</button>
+    <p class="helper" id="urlHelp">公開ポストのURLに対応しています</p>
+  </section>
+  <section class="card fade" id="result" hidden aria-label="解析結果">
+    <div class="preview">
+      <img class="thumb" id="thumb" alt="動画のサムネイル">
+      <div class="meta">
+        <div class="au" id="author"></div>
+        <div class="tx" id="postText"></div>
+      </div>
+    </div>
+    <div id="multi" hidden>
+      <div class="row"><span class="k">動画を選択</span></div>
+      <div class="chips" id="videoChoices"></div>
+    </div>
+    <div class="row"><span class="k">画質</span><span class="v" id="sizeEst"></span></div>
+    <div class="chips" id="qualities"></div>
+    <div class="row"><span class="k">軽量化</span><span class="v" id="ratio">オフ</span></div>
+    <label class="switch" for="compress">
+      <span><span class="t">サイズを削減</span><span class="d">端末内で再エンコード（時間・メモリを使用）</span></span>
+      <input type="checkbox" id="compress"><span class="track"></span>
+    </label>
+    <div id="levels" hidden class="levelwrap">
+      <div class="seg" id="seg">
+        <button type="button" data-crf="24" aria-pressed="false">高画質</button>
+        <button type="button" data-crf="28" aria-pressed="true">標準</button>
+        <button type="button" data-crf="32" aria-pressed="false">最小</button>
+      </div>
+      <p class="helper">削減率は動画により異なります。圧縮後が大きい場合は元動画を保存します。</p>
+    </div>
+    <button class="btn primary" id="go" type="button">ダウンロード</button>
+    <button class="btn outline" id="reset" type="button">別のポスト</button>
+    <div id="prog" hidden class="progress">
+      <div class="bar" role="progressbar" aria-label="処理進捗" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><i id="fill"></i></div>
+      <div class="stage" id="stage" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+  <p class="note">iPhoneでは共有シートから「ビデオを保存」を選んでください。<br>
+  軽量化には初回約30MBのエンコーダ取得が必要です。<br>
+  自分が権利を持つ動画、または保存が許可された動画に利用してください。</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

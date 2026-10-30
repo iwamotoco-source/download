@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>Shrink — 動画を軽くする</title><meta name="description" content="動画を端末内だけで一括圧縮。ファイルはアップロードされません。">
+<meta name="theme-color" content="#07080b"><link rel="manifest" href="/shrink.webmanifest"><link rel="icon" type="image/svg+xml" href="/shrink-icon.svg">
+<link rel="apple-touch-icon" href="/shrink-apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Shrink">
+</head><body><div class="aurora"></div><main>
+<a class="back" href="/">‹ ツール一覧</a>
+<header><img class="mark" src="/shrink-icon.svg" width="62" height="62" alt=""><h1>Sh<span>rink</span></h1><p class="sub">動画を、かしこく軽くする。</p></header>
+<section class="card">
+  <div class="drop" id="drop" role="button" tabindex="0" aria-label="動画ファイルを追加">
+    <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4 20h16"/></svg></div>
+    <div class="a">動画を追加</div><div class="b">複数まとめて選択 / ドロップも可能</div>
+  </div>
+  <div class="mini"><button type="button" id="pickFiles">ファイルを選ぶ</button><button type="button" id="pickDir">フォルダを選ぶ</button></div>
+  <input type="file" id="fileInput" accept="video/*,.mp4,.mov,.m4v,.webm,.mkv,.avi" multiple hidden>
+  <input type="file" id="dirInput" accept="video/*" webkitdirectory directory multiple hidden>
+  <p class="support">フォルダ選択は対応ブラウザのみ。iPhoneでは「ファイルを選ぶ」を利用してください。</p>
+</section>
+<section class="card" aria-label="圧縮設定">
+<div class="blk"><label class="lbl">画質</label><div class="seg four" id="qSeg">
+<button type="button" data-crf="20" aria-pressed="false">最高</button><button type="button" data-crf="23" aria-pressed="true">高画質</button><button type="button" data-crf="26" aria-pressed="false">標準</button><button type="button" data-crf="30" aria-pressed="false">軽量</button>
+</div></div>
+<div class="blk"><label class="lbl">最大解像度</label><div class="seg three" id="rSeg">
+<button type="button" data-max="0" aria-pressed="false">元のまま</button><button type="button" data-max="1080" aria-pressed="true">1080p</button><button type="button" data-max="720" aria-pressed="false">720p</button>
+</div></div>
+<div class="blk"><label class="lbl">音声</label><div class="seg three" id="aSeg">
+<button type="button" data-ab="192k" aria-pressed="false">高音質</button><button type="button" data-ab="128k" aria-pressed="true">標準</button><button type="button" data-ab="64k" aria-pressed="false">軽量</button>
+</div></div>
+<p class="est" id="est"></p>
+</section>
+<section class="card" id="queueCard" hidden>
+<div class="queue-head"><label class="lbl">キュー <span id="cnt"></span></label><button class="tiny" type="button" id="clearBtn">完了済みを消す</button></div>
+<div class="list" id="list"></div>
+</section>
+<p class="note">動画ファイルはアップロードされません。処理はこの端末の中で行います。<br>初回のみ圧縮エンジンの読み込みに通信が必要です。圧縮率・処理速度は元動画と端末性能によって異なります。</p>
+</main>
+<div class="dock" id="dock" hidden><div class="dock-in"><div class="sum"><span id="sumTxt"></span><span id="sumCut"></span></div>
+<button class="btn primary" id="startBtn" type="button">圧縮を開始</button><button class="btn sec" id="saveAllBtn" type="button" hidden>すべて保存（ZIP）</button>
+<div class="dock-actions"><button type="button" id="stopBtn" hidden>以降の処理を中止</button></div>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="module" src="/src/shrink.js"></script></body></html>

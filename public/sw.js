@@ -1,8 +1,23 @@
-const CACHE='xtract-shell-v2';
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/','/icon.svg','/manifest.webmanifest'])));self.skipWaiting()});
-self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
-self.addEventListener('fetch',event=>{
- const r=event.request,u=new URL(r.url);
- if(r.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/api/'))return;
- event.respondWith(fetch(r).then(resp=>{if(resp.ok && (u.pathname==='/'||u.pathname.startsWith('/assets/')||u.pathname==='/icon.svg')){const copy=resp.clone();event.waitUntil(caches.open(CACHE).then(c=>c.put(r,copy)))}return resp}).catch(()=>caches.match(r)));
+const VERSION='download-tools-v4';
+const SHELL=['/','/x.html','/shrink.html','/icon.svg','/shrink-icon.svg','/manifest.webmanifest','/shrink.webmanifest'];
+self.addEventListener('install',e=>{
+ e.waitUntil(caches.open(VERSION).then(async c=>{
+  await Promise.allSettled(SHELL.map(path=>c.add(path)));
+ }).then(()=>self.skipWaiting()));
+});
+self.addEventListener('activate',e=>{
+ e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==VERSION).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+});
+self.addEventListener('fetch',e=>{
+ const req=e.request,url=new URL(req.url);
+ if(req.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/'))return;
+ const isStatic=SHELL.includes(url.pathname)||url.pathname.startsWith('/assets/')||/\.(png|svg|webmanifest|css|js)$/.test(url.pathname);
+ if(!isStatic)return;
+ // Network-first avoids stale tool and manifest assets during updates.
+ e.respondWith(fetch(req).then(response=>{
+  if(response.ok&&response.type==='basic'){
+   const copy=response.clone();e.waitUntil(caches.open(VERSION).then(c=>c.put(req,copy)));
+  }
+  return response;
+ }).catch(()=>caches.match(req)));
 });

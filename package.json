@@ -1,6 +1,20 @@
 {
-  "name":"xtract","private":true,"version":"1.0.0","type":"module",
-  "scripts":{"dev":"vite","build":"npm run test && vite build","preview":"vite preview","test":"node --test tests/*.test.js"},
-  "dependencies":{"@ffmpeg/ffmpeg":"0.12.15","@ffmpeg/util":"0.12.2"},
-  "devDependencies":{"vite":"6.3.5"}
+  "name": "download-tools",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run test && vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@ffmpeg/util": "0.12.2",
+    "fflate": "0.8.2"
+  },
+  "devDependencies": {
+    "vite": "6.3.5"
+  }
 }
